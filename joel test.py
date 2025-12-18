@@ -1,8 +1,11 @@
+
 import wx
 from dynamic import PieceManager
 import MoveGen
 
 COLOUR = True
+
+#time in seconds setting intial time 
 GAME_TIME = 600  
 
 def change_colour():
@@ -13,6 +16,8 @@ def change_colour():
         colourframe.Close()
         play()
     def BLUE(event):
+        global COLOUR
+        COLOUR = True
         colourframe.Close()
         play()
 
@@ -48,24 +53,24 @@ def play():
     BOARDPIX=BOARDSIZE * SQUAREPIX
     print("PLaying")
 
-    frame=wx.Frame(None,title="Chessboard",size = (BOARDPIX+20,BOARDPIX+240))
-    frame.SetMinClientSize((BOARDPIX+20,BOARDPIX+240))
-    frame.SetMaxClientSize((BOARDPIX+20,BOARDPIX+240))
+    frame=wx.Frame(None,title="Chessboard",size = (BOARDPIX+500,BOARDPIX+240))
+    frame.SetMinClientSize((BOARDPIX+500,BOARDPIX+240))
+    frame.SetMaxClientSize((BOARDPIX+500,BOARDPIX+240))
     
 
     #def colour(event):
 
 
-    board = [
-        ["r","n","b","q","k","b","n","r"],
-        ["p","p","p","p","p","p","p","p"],
-        [".",".",".",".",".",".",".","."],
-        [".",".",".",".",".",".",".","."],
-        [".",".",".",".",".",".",".","."],
-        [".",".",".",".",".",".",".","."],
-        ["P","P","P","P","P","P","P","P"],
-        ["R","N","B","Q","K","B","N","R"],
-    ]
+    # board = [
+    #     ["r","n","b","q","k","b","n","r"],
+    #     ["p","p","p","p","p","p","p","p"],
+    #     [".",".",".",".",".",".",".","."],
+    #     [".",".",".",".",".",".",".","."],
+    #     [".",".",".",".",".",".",".","."],
+    #     [".",".",".",".",".",".",".","."],
+    #     ["P","P","P","P","P","P","P","P"],
+    #     ["R","N","B","Q","K","B","N","R"],
+    # ]
 
     centers=[]
 
@@ -79,9 +84,9 @@ def play():
 
 
 
-    container = wx.Panel(frame)
 
-    main_sizer = wx.BoxSizer(wx.VERTICAL)
+    container = wx.Panel(frame) 
+    main_sizer = wx.BoxSizer(wx.HORIZONTAL)
     
 
     # Top: captured black
@@ -96,24 +101,31 @@ def play():
     captured_white_panel = wx.Panel(container, size=(-1, 80))
     captured_white_panel.SetBackgroundColour("#eeeeee")
 
-    black_clock = wx.StaticText(captured_black_panel, label=str(GAME_TIME))
-    black_clock.SetFont(wx.Font(18, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
 
-    black_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    black_sizer.Add(black_clock, 0, wx.ALIGN_CENTER)
-    captured_black_panel.SetSizer(black_sizer)
-
-    white_clock = wx.StaticText(captured_white_panel, label=str(GAME_TIME))
-    white_clock.SetFont(wx.Font(18, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
-
-    white_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    white_sizer.Add(white_clock, 0, wx.ALIGN_CENTER)
-    captured_white_panel.SetSizer(white_sizer)
-
-    timer = wx.Timer(frame)
 
     def format_time(t):
         return f"{t//60:02d}:{t%60:02d}"
+    clock_panel = wx.Panel(container, size=(200, -1))
+    clock_panel.SetBackgroundColour("#eeeeee")
+
+
+    clock_sizer = wx.BoxSizer(wx.VERTICAL)
+
+    black_clock = wx.StaticText(clock_panel, label=format_time(black_time))
+    black_clock.SetFont(wx.Font(18, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+
+    white_clock = wx.StaticText(clock_panel, label=format_time(white_time))
+    white_clock.SetFont(wx.Font(18, wx.FONTFAMILY_SWISS, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD))
+
+    clock_sizer.AddStretchSpacer()
+    clock_sizer.Add(black_clock, 0, wx.ALIGN_CENTER | wx.BOTTOM, 40)
+    clock_sizer.AddStretchSpacer()
+    clock_sizer.Add(white_clock, 0, wx.ALIGN_CENTER)
+    clock_sizer.AddStretchSpacer()
+
+    clock_panel.SetSizer(clock_sizer)
+
+    timer = wx.Timer(frame)
     
     def switch_turn():
         nonlocal turn
@@ -129,28 +141,30 @@ def play():
             if white_time <= 0:
                 timer.Stop()
                 wx.MessageBox("White ran out of time!")
+                frame.Destroy()
         else:
             black_time -= 1
             black_clock.SetLabel(format_time(black_time))
             if black_time <= 0:
                 timer.Stop()
                 wx.MessageBox("Black ran out of time!")
+                frame.Destroy()
 
     frame.Bind(wx.EVT_TIMER, on_tick, timer)
     timer.Start(1000)
 
-    
+    board_column = wx.BoxSizer(wx.VERTICAL)
+    board_column.Add(captured_black_panel, 0, wx.EXPAND | wx.BOTTOM, 5)
+    board_column.Add(board_panel, 0, wx.ALIGN_CENTER)
+    board_column.Add(captured_white_panel, 0, wx.EXPAND | wx.TOP, 5)
 
-
-    main_sizer.Add(captured_black_panel, 0, wx.ALIGN_CENTER | wx.TOP, 5)
-    main_sizer.Add(board_panel, 0)
-    main_sizer.Add(captured_white_panel, 0, wx.ALIGN_CENTER | wx.TOP, 5)
-
+    main_sizer.Add(board_column, 0, wx.ALL, 10)
+    main_sizer.Add(clock_panel, 0, wx.EXPAND | wx.LEFT, 20)
 
     container.SetSizer(main_sizer)
-    
-    
-    manager =manager = PieceManager(centers,board_panel,captured_white_panel,captured_black_panel,colour=COLOUR,switch_turn=switch_turn)
+ 
+    #print(COLOUR)
+    manager = PieceManager(centers,board_panel,captured_white_panel,captured_black_panel,colour=COLOUR,switch_turn=switch_turn)
 
  
     frame.Show()
@@ -278,5 +292,3 @@ panel.SetSizer(vbox)
 
 start_frame.Show()
 app.MainLoop()
-
-
