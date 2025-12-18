@@ -12,7 +12,6 @@ import MoveGen
 from unit import Unit
 
 
-BLUEBLACK = True
 SQAUREPIX = 60
 
 
@@ -206,10 +205,10 @@ class PieceManager:
 
         moves = moveDict.get(engine_pos, set())
 
-        message = "Black won" if self.whites_move else "White Won"
-        if len(moves)==0:
-            db = wx.MessageDialog(self.board_panel, message,"End Game")
-            print("Game Over")
+        # message = "Black won" if self.whites_move else "White Won"
+        # if len(moves)==0:
+        #     db = wx.MessageDialog(self.board_panel, message,"End Game")
+        #     print("Game Over")
             
             
         
@@ -222,6 +221,52 @@ class PieceManager:
         ]
 
         self.board_panel.Refresh()
+    
+
+    def detect_castling(from_sq, to_sq, piece):
+        is_qs = False
+        is_ks = False
+
+        if piece.lower() == 'k':
+            fx, fy = from_sq
+            tx, ty = to_sq
+
+            # King moves two squares horizontally
+            if fy == ty and abs(tx - fx) == 2:
+                if tx < fx:
+                    is_qs = True
+                else:
+                    is_ks = True
+
+        return is_qs, is_ks
+
+    def detect_en_passant(from_sq, to_sq, piece, board):
+        if piece.lower() != 'p':
+            return None
+
+        fx, fy = from_sq
+        tx, ty = to_sq
+
+        # Pawn moves diagonally but destination is empty
+        if abs(tx - fx) == 1 and abs(ty - fy) == 1:
+            board_row = 7 - ty
+            board_col = tx
+            if board[board_row][board_col] == '.':
+                return (tx, ty)
+
+        return None
+
+    def detect_promotion(to_sq, piece):
+        x, y = to_sq
+        if piece.lower() == 'p' and (y == 7 or y == 0):
+            return True
+        return False
+
+    def detect_promotion(to_sq, piece):
+        x, y = to_sq
+        if piece.lower() == 'p' and (y == 7 or y == 0):
+            return True
+        return False
 
     def move(self, selected_square, clicked_square):
         sr, sc = selected_square
@@ -236,7 +281,18 @@ class PieceManager:
             if self.whites_move:self.white_captured.append(self.fen[tr][tc])
             else:self.black_captured.append(self.fen[tr][tc])
         
+        isQueenSideCastle = False
+        isKingSideCastle = False
+        isEnPassant = None
         promote = None
+
+        # Detect castling
+        isQueenSideCastle, isKingSideCastle = PieceManager.detect_castling(from_pos, to_pos, piece)
+
+        # Detect en passant
+        isEnPassant = PieceManager.detect_en_passant(from_pos, to_pos, piece, self.ChessBoard.board)
+
+
         if piece.lower() == 'p' and to_pos[1] in (0, 7):
             dlg = wx.SingleChoiceDialog(
                 self.board_panel,
@@ -249,6 +305,8 @@ class PieceManager:
                 return
 
             promote = dlg.GetStringSelection()[0]
+            if promote.lower()=='k':
+                promote='N'
             if piece.islower():
                 promote = promote.lower()
             dlg.Destroy()
@@ -257,9 +315,9 @@ class PieceManager:
             self.whites_move,
             from_pos,
             to_pos,
-            False,
-            False,
-            False,
+            isKingSideCastle,
+            isQueenSideCastle,
+            isEnPassant,
             promote
         )
 
@@ -274,6 +332,22 @@ class PieceManager:
         self.highlight_points.clear()
 
         self.board_panel.Refresh()
+        messsage = "White won" if not self.whites_move else "Black won"
+        message2 = "Draw"
+
+        moveDictForMate, isCheck =self.ChessBoard.getLegalMoves(self.whites_move)
+
+        if len(moveDictForMate)==0:
+            if isCheck:
+                wx.MessageBox(messsage, "End Game")
+            else:
+                wx.MessageBox(message2, "End Game")
+
+            self.end_game()
+
+    def end_game(self):
+        self.board_panel.GetParent().GetParent().Destroy()
+        print("The Game has ended")
 
 
 # =========================
@@ -293,3 +367,4 @@ class PieceManager:
 #     app = wx.App(False)
 #     ChessFrame()
 #     app.MainLoop()
+
